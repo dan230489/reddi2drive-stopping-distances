@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Stopping & Travelling Distances</title>
+  <style>
+    :root { --max-stop: 171; }
+    body { font-family: -apple-system, system-ui, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background:#f6f7f9; color:#111; }
+    .wrap { max-width: 860px; margin: 0 auto; padding: 18px; }
+    .card { background:#fff; border-radius: 14px; box-shadow: 0 6px 22px rgba(0,0,0,.08); padding: 18px; }
+    h1 { font-size: 20px; margin: 0 0 10px; }
+    .sub { margin: 0 0 16px; color:#444; line-height: 1.35; }
+    .row { display:flex; gap:12px; flex-wrap: wrap; align-items: end; margin: 12px 0 18px; }
+    label { display:block; font-size: 12px; color:#444; margin-bottom: 6px; }
+    select { font-size: 16px; padding: 10px 12px; border-radius: 10px; border:1px solid #d0d5dd; background:#fff; min-width: 170px; }
+    .grid { display:grid; grid-template-columns: 1fr; gap:12px; }
+    @media (min-width: 720px){ .grid { grid-template-columns: 1fr 1fr; } }
+    .metric { border:1px solid #e6e8ee; border-radius: 12px; padding: 12px 14px; }
+    .metric .name { font-size: 13px; color:#444; margin:0 0 6px; }
+    .metric .val { font-size: 28px; font-weight: 700; margin:0; }
+    .metric .unit { font-size: 14px; color:#444; font-weight: 600; }
+    .viz { margin-top: 16px; border:1px solid #e6e8ee; border-radius: 12px; padding: 12px 14px; }
+    .barwrap { height: 14px; background:#eef1f6; border-radius: 999px; overflow:hidden; }
+    .bar { height: 100%; width: 0%; background:#111; transition: width .2s ease; }
+    .note { font-size: 12px; color:#444; margin-top: 10px; line-height: 1.4; }
+    .foot { font-size: 12px; color:#666; margin-top: 14px; }
+    .pill { display:inline-block; font-size: 12px; padding: 3px 8px; border-radius: 999px; background:#eef1f6; color:#222; margin-left: 6px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Stopping & Travelling Distances <span class="pill">interactive</span></h1>
+      <p class="sub">Choose a speed and road conditions. The distances update automatically.</p>
+
+      <div class="row">
+        <div>
+          <label for="cond">Conditions</label>
+          <select id="cond">
+            <option value="Dry">Dry</option>
+            <option value="Wet">Wet</option>
+          </select>
+        </div>
+        <div>
+          <label for="speed">Speed (mph)</label>
+          <select id="speed">
+            <option>20</option><option>30</option><option>40</option>
+            <option>50</option><option>60</option><option>70</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="metric">
+          <p class="name">Stopping distance</p>
+          <p class="val"><span id="stop">—</span> <span class="unit">m</span></p>
+        </div>
+        <div class="metric">
+          <p class="name">Following distance</p>
+          <p class="val"><span id="follow">—</span> <span class="unit">m</span></p>
+        </div>
+        <div class="metric">
+          <p class="name">Distance travelled per second</p>
+          <p class="val"><span id="dps">—</span> <span class="unit">m/s</span></p>
+        </div>
+        <div class="metric">
+          <p class="name">Thinking distance</p>
+          <p class="val"><span id="think">—</span> <span class="unit">m</span></p>
+        </div>
+        <div class="metric">
+          <p class="name">Braking distance</p>
+          <p class="val"><span id="brake">—</span> <span class="unit">m</span></p>
+        </div>
+      </div>
+
+      <div class="viz">
+        <div style="display:flex; justify-content: space-between; align-items:center; gap:10px;">
+          <div style="font-size:13px; color:#444; font-weight:600;">Visualiser</div>
+          <div style="font-size:12px; color:#666;">0m → 171m (wet @ 70mph)</div>
+        </div>
+        <div style="margin-top:10px" class="barwrap"><div id="bar" class="bar"></div></div>
+        <div class="note">
+          Note: the Highway Code advises you allow more distance in wet conditions. In this tool, the <strong>braking</strong> distance doubles when “Wet” is selected, while <strong>thinking</strong> distance stays the same — so total stopping distance does not double exactly.
+        </div>
+      </div>
+
+      <div class="foot">Made for learner-driver education. You can host this file anywhere (website, Patreon download, etc.).</div>
+    </div>
+  </div>
+
+<script>
+  const maps = {
+    think: {20:6, 30:9, 40:12, 50:15, 60:18, 70:21},
+    brakeDry: {20:6, 30:14, 40:24, 50:38, 60:55, 70:75},
+    followDry: {20:18, 30:27, 40:36, 50:45, 60:54, 70:63},
+    dps: {20:9, 30:13.5, 40:18, 50:22.5, 60:27, 70:31.5}
+  };
+
+  const el = (id)=>document.getElementById(id);
+  const fmt = (n)=> (Number.isInteger(n) ? String(n) : String(n).replace(/\.0$/,''));
+
+  function recalc(){
+    const cond = el('cond').value;
+    const speed = parseInt(el('speed').value, 10);
+
+    const think = maps.think[speed] ?? null;
+    const brake = (maps.brakeDry[speed] ?? null) * (cond === 'Wet' ? 2 : 1);
+    const stop  = (think == null || brake == null) ? null : (think + brake);
+    const follow = (maps.followDry[speed] ?? null) * (cond === 'Wet' ? 2 : 1);
+    const dps = maps.dps[speed] ?? null;
+
+    el('think').textContent = think == null ? '—' : fmt(think);
+    el('brake').textContent = brake == null ? '—' : fmt(brake);
+    el('stop').textContent  = stop == null ? '—' : fmt(stop);
+    el('follow').textContent= follow == null ? '—' : fmt(follow);
+    el('dps').textContent   = dps == null ? '—' : fmt(dps);
+
+    const maxStop = 171; // wet @ 70mph in this dataset
+    const pct = stop == null ? 0 : Math.max(0, Math.min(100, (stop / maxStop) * 100));
+    el('bar').style.width = pct.toFixed(2) + '%';
+  }
+
+  el('cond').addEventListener('change', recalc);
+  el('speed').addEventListener('change', recalc);
+
+  // defaults from your sheet: A2=Dry, B2=20
+  el('cond').value = 'Dry';
+  el('speed').value = '20';
+  recalc();
+</script>
+</body>
+</html>
