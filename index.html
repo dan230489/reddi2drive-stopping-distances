@@ -194,16 +194,17 @@
     .swatch-brake{background:#d40000;}
 
 
-@media (max-width: 500px) {
-  .visual-row { align-items: stretch; }
-  .bar-shell { width: 100% !important; min-width: 0 !important; }
-  .key {
-    width: 100%;
-    flex-direction: row;
-    justify-content: center;
-    gap: 24px;
-    margin-top: 6px;
-  }
+/* iPhone portrait fix */
+.corner-logo { pointer-events: none; } /* logo won't block taps */
+@media (max-width: 520px) {
+  .wrap { padding: 18px 14px 28px; }
+  h1 { margin-top: 86px; }
+  .box { padding: 14px; }
+  .formrow { grid-template-columns: 1fr; }
+  select { max-width: 100%; width: 100%; }
+  .distBar { width: calc(100% - 40px); max-width: none; margin: 14px 20px 0; }
+  .seg { font-size: 16px; padding: 0 6px; }
+  .keyRow { justify-content: center; flex-wrap: wrap; gap: 14px; margin: 8px 20px 0; }
 }
 
 </style>
